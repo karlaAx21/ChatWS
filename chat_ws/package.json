@@ -10,9 +10,11 @@
     "ajv": "^8.17.1",
     "ajv-keywords": "^5.1.0",
     "axios": "^1.8.1",
+    "crypto-js": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "5.0.1",
+    "socket.io-client": "^4.8.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
