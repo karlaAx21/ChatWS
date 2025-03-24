@@ -6,7 +6,7 @@ import './Chat.css'; // Import the CSS file
 const socket = io('http://localhost:5000'); // Connect to the WebSocket server
 const SECRET_KEY = 'sdfG@#1$7fh^we89AqOPz!dmX435vnL'; // secret key for encryption/decryption
 
-const Chat = ({ username, onLogout }) => { // Add an `onLogout` prop to handle logout
+const Chat = ({ username, onLogout }) => { 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
