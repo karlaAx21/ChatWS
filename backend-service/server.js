@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
 
     // Send encrypted message history to the newly connected user
     const encryptedHistory = messageHistory.map((msg) => {
-      const encryptedMsg = CryptoJS.AES.encrypt(JSON.stringify(msg), 'your_secret_key').toString();
+      const encryptedMsg = CryptoJS.AES.encrypt(JSON.stringify(msg), 'sdfG@#1$7fh^we89AqOPz!dmX435vnL').toString();
       return encryptedMsg;
     });
     socket.emit('message history', encryptedHistory);
@@ -59,7 +59,7 @@ io.on('connection', (socket) => {
       console.log(`Message received: ${encryptedMsg}`);
       
       // Decrypt the received message
-      const bytes = CryptoJS.AES.decrypt(encryptedMsg, 'your_secret_key');
+      const bytes = CryptoJS.AES.decrypt(encryptedMsg, 'sdfG@#1$7fh^we89AqOPz!dmX435vnL');
       const decryptedMessage = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
   
       // Log the decrypted message
@@ -78,7 +78,7 @@ io.on('connection', (socket) => {
     });
 
       //Re-encrypt the message to broadcast to other clients
-      const encryptedMsgToBroadcast = CryptoJS.AES.encrypt(JSON.stringify(decryptedMessage), 'your_secret_key').toString();
+      const encryptedMsgToBroadcast = CryptoJS.AES.encrypt(JSON.stringify(decryptedMessage), 'sdfG@#1$7fh^we89AqOPz!dmX435vnL').toString();
       io.emit('chat message', encryptedMsgToBroadcast); // Broadcast the encrypted message
     } catch (error) {
       console.error('Error decrypting message:', error);

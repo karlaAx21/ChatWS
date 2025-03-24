@@ -4,7 +4,7 @@ import CryptoJS from 'crypto-js'; // Import the crypto-js library
 import './Chat.css'; // Import the CSS file
 
 const socket = io('http://localhost:5000'); // Connect to the WebSocket server
-const SECRET_KEY = 'your_secret_key'; // Define a secret key for encryption/decryption
+const SECRET_KEY = 'sdfG@#1$7fh^we89AqOPz!dmX435vnL'; // secret key for encryption/decryption
 
 const Chat = ({ username, onLogout }) => { // Add an `onLogout` prop to handle logout
   const [message, setMessage] = useState('');
