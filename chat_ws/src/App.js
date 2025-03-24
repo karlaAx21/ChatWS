@@ -13,12 +13,22 @@ function App() {
     setIsLoggedIn(true);
   };
 
+  // Function to handle logout
+  const handleLogout = () => {
+    setUsername(''); // Clear the username
+    setIsLoggedIn(false); // Reset the login state
+  };
+
   return (
     <div className="App">
       <header className="App-header">
         <h1 className="Title">Spring 2025 CPSC 455-02 Project 1 Part II</h1>
       </header>
-      {isLoggedIn ? <Chat username={username} /> : <Login onLoginSuccess={handleLoginSuccess} />}
+      {isLoggedIn ? (
+        <Chat username={username} onLogout={handleLogout} /> // Pass the logout handler to Chat
+      ) : (
+        <Login onLoginSuccess={handleLoginSuccess} />
+      )}
     </div>
   );
 }

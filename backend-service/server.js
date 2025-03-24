@@ -1,11 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const axios = require('axios');
 const http = require('http');
 const { Server } = require('socket.io');
-const userRoutes = require('./routes/users'); // Ensure this path is correct
-const CryptoJS = require('crypto-js'); // Import the crypto-js library
+const CryptoJS = require('crypto-js');
+const fs = require('fs'); 
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -13,88 +13,107 @@ const port = process.env.PORT || 5000;
 app.use(bodyParser.json());
 app.use(cors());
 
-let usersCount = 0; // Variable to keep track of the number of logged-in users
-let onlineUsers = 0; // Variable to keep track of the number of online users
-let messageHistory = []; // In-memory array to store message history
+let loggedInUsers = []; // Array to track users logged into the chat
+let onlineUsersCount = 0; // Counter to track active users in the chat
+let messageHistory = []; // Store message
 
 // Create HTTP server and WebSocket server
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // Adjust the origin as needed
+    origin: "*", // Allow any origin
     methods: ["GET", "POST"]
   }
 });
 
-// WebSocket connection
-io.on('connection', async (socket) => {
-  if (onlineUsers >= 3) {
-    socket.emit('chat message', 'Chat room is full. Please try again later.');
-    socket.disconnect(); // Disconnect the client if the chat room is full
-    return;
-  }
+// Function to log and update active users
+const updateActiveUsers = () => {
+  console.log(`Active users in chat: ${onlineUsersCount}`);
+};
 
-  onlineUsers++; // Increment the count of online users
-  console.log('A user connected:', socket.id);
-  console.log('Number of connected users:', onlineUsers);
+// WebSocket connection handling
+io.on('connection', (socket) => {
+  console.log(`A user connected: ${socket.id}`);
 
-  // Send message history to the new user
-  const encryptedHistory = messageHistory.map((msg) => {
-    const encryptedMsg = CryptoJS.AES.encrypt(JSON.stringify(msg), 'your_secret_key').toString();
-    return encryptedMsg;
-  });
-  socket.emit('message history', encryptedHistory);
+  // Handle "login" event to add user to the chat
+  socket.on('login', (username) => {
+    if (!loggedInUsers.includes(username)) {
+      loggedInUsers.push(username); // Add username to the list of logged-in users
+      onlineUsersCount++; // Increment active user 
+      updateActiveUsers(); // Log updated count
+      console.log(`User logged in: ${username}`);
+    }
 
-  socket.on('chat message', (msg) => {
-    console.log('Message received:', msg); // Log the received message
-    // Decrypt the message and store it in the history array
-    const bytes = CryptoJS.AES.decrypt(msg, 'your_secret_key');
-    const decryptedMessage = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    messageHistory.push(decryptedMessage);
-    io.emit('chat message', msg); // Emit the encrypted message to all connected clients
+    // Send encrypted message history to the newly connected user
+    const encryptedHistory = messageHistory.map((msg) => {
+      const encryptedMsg = CryptoJS.AES.encrypt(JSON.stringify(msg), 'your_secret_key').toString();
+      return encryptedMsg;
+    });
+    socket.emit('message history', encryptedHistory);
   });
 
+  // Handle "chat message" events
+  socket.on('chat message', (encryptedMsg) => {
+    try {
+      // Log the encrypted message received from the client
+      console.log(`Message received: ${encryptedMsg}`);
+      
+      // Decrypt the received message
+      const bytes = CryptoJS.AES.decrypt(encryptedMsg, 'your_secret_key');
+      const decryptedMessage = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  
+      // Log the decrypted message
+      // console.log(`Decrypted message received: ${decryptedMessage.username}: ${decryptedMessage.text}`);
+  
+      // Store the decrypted message in the history
+      messageHistory.push(decryptedMessage);
+      // Write the decrypted message to a text file
+    const messageToWrite = `${new Date().toISOString()} - ${decryptedMessage.username}: ${decryptedMessage.text}\n`;
+    fs.appendFile(' messageHistory.txt', messageToWrite, (err) => {
+      if (err) {
+        console.error('Error writing message to file:', err);
+      } else {
+        console.log('Message written to file:  messageHistory.txt');
+      }
+    });
+
+      //Re-encrypt the message to broadcast to other clients
+      const encryptedMsgToBroadcast = CryptoJS.AES.encrypt(JSON.stringify(decryptedMessage), 'your_secret_key').toString();
+      io.emit('chat message', encryptedMsgToBroadcast); // Broadcast the encrypted message
+    } catch (error) {
+      console.error('Error decrypting message:', error);
+     }
+  });
+
+  // Handle "logout" events
+  socket.on('logout', (username) => {
+    if (loggedInUsers.includes(username)) {
+      loggedInUsers = loggedInUsers.filter((user) => user !== username);
+      onlineUsersCount--; // Decrement active user counter
+      updateActiveUsers();
+      console.log(`User logged out: ${username}`);
+    }
+
+    // Explicitly trigger disconnection logic
+    socket.disconnect(true); // Disconnect the user
+  });
+
+  // Handle user disconnects
   socket.on('disconnect', () => {
-    onlineUsers--; // Decrement the count of online users
-    console.log('User disconnected:', socket.id);
-    console.log('Number of connected users:', onlineUsers);
+    console.log(`User disconnected: ${socket.id}`);
+
+    // Ensure we decrement the user count only if they were logged in
+    onlineUsersCount = Math.max(0, onlineUsersCount - 1);
+    updateActiveUsers();
   });
 });
 
-// Define a simple route
+// Define a simple HTTP route for testing
 app.get('/', (req, res) => {
   res.send('Welcome to the backend service');
 });
 
-// Define API routes
-app.use('/api/users', userRoutes);
-
-// Endpoint to get the current user count
-app.get('/api/users/count', (req, res) => {
-  res.json({ usersCount });
-});
-
-// Add login route
-app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
-  const MOCK_API_URL = 'https://67c8d76f0acf98d07087de29.mockapi.io/chat/ws/user';
-
-  try {
-    const response = await axios.get(MOCK_API_URL);
-    const users = response.data;
-    const user = users.find(u => u.username === username && u.password === password);
-    if (user) {
-      usersCount++; // Increment the user count on successful login
-      res.json({ success: true, message: 'Login successful!' });
-    } else {
-      res.json({ success: false, message: 'Invalid username or password' });
-    }
-  } catch (error) {
-    console.error('Error fetching users from MockAPI:', error);
-    res.status(500).json({ success: false, message: 'An error occurred' });
-  }
-});
-
+// Start the server
 server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

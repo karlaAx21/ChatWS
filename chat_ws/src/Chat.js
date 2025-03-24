@@ -6,7 +6,7 @@ import './Chat.css'; // Import the CSS file
 const socket = io('http://localhost:5000'); // Connect to the WebSocket server
 const SECRET_KEY = 'your_secret_key'; // Define a secret key for encryption/decryption
 
-const Chat = ({ username }) => {
+const Chat = ({ username, onLogout }) => { // Add an `onLogout` prop to handle logout
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
@@ -50,12 +50,24 @@ const Chat = ({ username }) => {
     }
   };
 
+  const handleLogout = () => {
+    // Emit "logout" event with the username to notify the server
+    socket.emit('logout', username);
+  
+    // Call the parent component's logout handler to reset the UI state
+    onLogout();
+  };
+
   return (
     <div className="chat-container">
       {errorMessage ? (
         <p className="error-message">{errorMessage}</p>
       ) : (
         <>
+          <div className="header">
+            <h1>Chat Room</h1>
+            <button className="logout-button" onClick={handleLogout}>Logout</button> {/* Add logout button */}
+          </div>
           <div className="messages">
             {messages.map((msg, index) => (
               <div key={index} className={`message ${msg.username === username ? 'sent' : 'received'}`}>
