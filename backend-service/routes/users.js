@@ -15,6 +15,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add more routes as needed
-
 module.exports = router;
