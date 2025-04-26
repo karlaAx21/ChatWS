@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('./config/dbConnection'); // Import dbConnection.js from the config folder \config\dbConnection.js
+const db = require('./config/dbConnection'); // Import dbConnection.js from the config folder
 
 // Initialize the Express app
 const app = express();
