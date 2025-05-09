@@ -1,21 +1,19 @@
-
-
-
 <?php
 // Database credentials
-$servername = "sql107.infinityfree.com"; // Use the hostname provided by InfinityFree
-$username = "if0_38816815"; // Your InfinityFree database username
-$password = "Dg7dZmdWM2ex"; // Your InfinityFree database password
-$dbname = "if0_38816815_chat_ws"; // Your InfinityFree database name
-//C:\Users\alexa\Documents\GitHub\RandomChat\backend
+$servername = "sql107.infinityfree.com";
+$username = "if0_38816815"; 
+$password = "Dg7dZmdWM2ex"; 
+$dbname = "if0_38816815_chat_ws";
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
-//backend/db_connection.php
+
 // Check connection
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die(json_encode(["status" => "error", "message" => $conn->connect_error]));
 }
 
-echo "Connected successfully";
+// Return JSON response instead of direct echo
+header('Content-Type: application/json');
+echo json_encode(["status" => "success"]);
 ?>
