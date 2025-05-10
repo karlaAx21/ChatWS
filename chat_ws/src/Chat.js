@@ -1,94 +1,91 @@
-import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
-import CryptoJS from 'crypto-js'; // Import the crypto-js library
-import './Chat.css'; // Import the CSS file
+import React, { useState, useEffect } from "react";
+import { io } from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import "./Chat.css"; 
 
-const socket = io('ws://192.168.1.93:5000'); // Connect to the WebSocket server
-const SECRET_KEY = 'sdfG@#1$7fh^we89AqOPz!dmX435vnL'; // secret key for encryption/decryption
+const socket = io("http://localhost:3000");
 
-const Chat = ({ username, onLogout }) => { 
-  const [message, setMessage] = useState('');
+const Chat = () => {  //Wrap JSX inside this function
   const [messages, setMessages] = useState([]);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [message, setMessage] = useState("");
+  const [image, setImage] = useState(null);
+  const navigate = useNavigate();
+
+  const username = localStorage.getItem("username");
+  const userId = localStorage.getItem("user_id");
 
   useEffect(() => {
-    // Receive message history from the server
-    socket.on('message history', (history) => {
-      const decryptedHistory = history.map((encryptedMsg) => {
-        const bytes = CryptoJS.AES.decrypt(encryptedMsg, SECRET_KEY);
-        return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-      });
-      setMessages(decryptedHistory);
+    if (!userId) navigate("/login");
+
+    socket.on("newMessage", (data) => {
+      setMessages((prevMessages) => [...prevMessages, data]);
     });
 
-    // Receive messages from the server
-    socket.on('chat message', (encryptedMsg) => {
-      if (encryptedMsg === 'Chat room is full. Please try again later.') {
-        setErrorMessage(encryptedMsg);
-      } else {
-        // Decrypt the received message
-        const bytes = CryptoJS.AES.decrypt(encryptedMsg, SECRET_KEY);
-        const decryptedMessage = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        setMessages((prevMessages) => [...prevMessages, decryptedMessage]);
+    socket.emit("getMessages");
+    socket.on("messageHistory", (response) => {
+      if (response.status === "success") {
+        setMessages(response.messages);
       }
     });
 
     return () => {
-      socket.off('message history');
-      socket.off('chat message');
+      socket.off("newMessage");
+      socket.off("messageHistory");
     };
-  }, []);
+  }, [userId]);
 
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (message.trim() && !errorMessage) {
-      // Encrypt the message before sending
-      const messageObject = { username, text: message };
-      const encryptedMessage = CryptoJS.AES.encrypt(JSON.stringify(messageObject), SECRET_KEY).toString();
-      socket.emit('chat message', encryptedMessage);
-      setMessage('');
-    }
+  const sendMessage = () => {
+    if (!message.trim() && !image) return;
+    if (!userId) return;
+
+    const messageData = { sender_id: userId, content: message, image_data: image };
+    socket.emit("sendMessage", messageData);
+
+    setMessage("");
+    setImage(null);
   };
 
   const handleLogout = () => {
-    // Emit "logout" event with the username to notify the server
-    socket.emit('logout', username);
-  
-    // Call the parent component's logout handler to reset the UI state
-    onLogout();
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("username");
+    navigate("/login");
   };
 
-  return (
+  return ( //This must be inside the function
     <div className="chat-container">
-      {errorMessage ? (
-        <p className="error-message">{errorMessage}</p>
-      ) : (
-        <>
-          <div className="header">
-            <h1>Chat Room</h1>
-            <button className="logout-button" onClick={handleLogout}>Logout</button> {/* Add logout button */}
+      <h2>Chat Room</h2>
+
+      {/* Buttons for Logout & Users Page */}
+      <div className="buttons-container">
+        <button className="logout-button" onClick={handleLogout}>Logout</button>
+        <button className="users-button" onClick={() => navigate("/users")}>Users</button>
+      </div>
+
+      {/* Messages */}
+      <div className="messages-container">
+        {messages.map((msg, index) => (
+          <div key={index} className={`message ${msg.username === username ? "self" : "other"}`}>
+            <p>
+              <strong>{msg.username}:</strong> {msg.content}
+            </p>
+            {msg.image_data && <img src={msg.image_data} alt="Uploaded" className="message-image" />}
           </div>
-          <div className="messages">
-            {messages.map((msg, index) => (
-              <div key={index} className={`message ${msg.username === username ? 'sent' : 'received'}`}>
-                <strong>{msg.username}:</strong> {msg.text}
-              </div>
-            ))}
-          </div>
-          <form className="message-form" onSubmit={sendMessage}>
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your message"
-              required
-            />
-            <button type="submit">Send</button>
-          </form>
-        </>
-      )}
+        ))}
+      </div>
+
+      {/* Message Input */}
+      <div className="input-container">
+        <input
+          type="text"
+          placeholder="Type a message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} />
+        <button onClick={sendMessage}>Send</button>
+      </div>
     </div>
   );
 };
 
-export default Chat;
+export default Chat; 

@@ -1,77 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './Login.css';
+import React, { useState } from "react";
+import { io } from "socket.io-client";
+import { Link, useNavigate } from "react-router-dom";
 
-const Login = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [usersCount, setUsersCount] = useState(0);
+const socket = io("http://localhost:3000");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.get('https://67c8d76f0acf98d07087de29.mockapi.io/chat/ws/user');
-      const users = response.data;
-      const user = users.find(u => u.username === username && u.password === password);
-      if (user) {
-        setMessage('Login successful!');
-        onLoginSuccess(username); // Pass the username on successful login
-        updateUsersCount(); // Update the user count
+const Login = () => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    socket.emit("loginUser", { username, password });
+
+    socket.on("loginStatus", (response) => {
+      if (response.status === "success") {
+        setMessage(`Welcome, ${response.username}! Redirecting to chat...`);
+        localStorage.setItem("user_id", response.user_id);
+        localStorage.setItem("username", response.username); //Store username
+        setTimeout(() => navigate("/chat"), 2000);
       } else {
-        setMessage('Login failed: Invalid username or password');
+        setMessage(`Login failed: ${response.message}`);
       }
-    } catch (error) {
-      console.error('There was an error fetching the users!', error);
-      setMessage('Login failed: An error occurred.');
-    }
+    });
   };
-
-  const updateUsersCount = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/users/count'); // Fetch the current user count from the server
-      setUsersCount(response.data.usersCount);
-    } catch (error) {
-      console.error('There was an error fetching the user count!', error);
-    }
-  };
-
-  useEffect(() => {
-    updateUsersCount();
-  }, []);
 
   return (
-    <div className="login-container">
-      <h1>Login</h1>
-      <form className="login-form" onSubmit={handleLogin}>
-        <div>
-          <label htmlFor="username">Username:</label>
-          <input
-            type="text"
-            id="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Password:</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Login</button>
-      </form>
-      {message && (
-        <p className={`login-message ${message.includes('successful') ? 'success' : 'failure'}`}>
-          {message}
-        </p>
-      )}
-      <p className="user-count">Number of logged-in users: {usersCount}</p>
+    <div className="login-container"> 
+      <h2>Login</h2>
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button onClick={handleLogin}>Login</button>
+      <p>{message}</p>
+
+      <p>Don't have an account? <Link to="/register">Register here</Link></p>
     </div>
   );
 };

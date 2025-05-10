@@ -5,9 +5,81 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: rgb(137, 81, 149);
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+
+
+
+/* login */
+.login-container {
+  width: 500px;
+  margin: auto;
+  padding: 20px;
+  
+  border-radius: 8px;
+  border-color: rgb(0, 4, 3);
+  border-style: double;
+  border-width: 20px;
+
+  /* Centering using Flexbox */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.login-container input {
+  width: 90%;
+  padding: 10px;
+  margin: 5px 0;
+}
+
+.login-container button {
+  background-color: #8800ff;
+  color: rgb(7, 6, 6);
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+}
+/* Register */
+.register-container {
+  width: 500px;
+  margin: auto;
+  padding: 20px;
+  
+  border-radius: 8px;
+  border-color: rgb(0, 4, 3);
+  border-style: double;
+  border-width: 20px;
+
+  /* Centering using Flexbox */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.register-container input{
+  width: 90%;
+  padding: 10px;
+  margin: 5px 0;
+}
+.register-container li {
+  background-color: black;
+  width: 70%;
+  font-weight: bold;
+  padding: 5px;
+  list-style: none; /* Removes default bullet points */
+}
+.register-container button {
+  background-color: #8800ff;
+  color: rgb(7, 6, 6);
+  padding: 10px;
+  border: none;
+  cursor: pointer;
 }
