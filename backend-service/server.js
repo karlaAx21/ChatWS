@@ -6,6 +6,9 @@ const { Server } = require("socket.io");
 const mysql = require("mysql2");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const fileType = require("file-type");
+
+
 
 // const { body } = require("express-validator");
 // const DOMPurify = require("dompurify");
@@ -143,17 +146,19 @@ socket.on("loginUser", async (loginData) => {
     socket.emit("loginStatus", { status: "error", message: "Login process failed" });
   }
 });
-
-  socket.on("sendMessage", (messageData) => {
+// send massage 
+socket.on("sendMessage", (messageData) => {
   try {
     let { sender_id, tag_id, content, image_data } = messageData;
 
-    //Sanitize input before using in queries
     sender_id = sanitizeInput(sender_id);
     tag_id = sanitizeInput(tag_id);
     content = sanitizeInput(content);
 
-    // Retrieve username for the sender
+    // Encrypt message before storing it
+    const encryptedContent = encryptMessage(content);
+
+    // Retrieve sender's username
     const sql = "SELECT username FROM users WHERE user_id = ?";
     db.query(sql, [sender_id], (err, results) => {
       if (err || results.length === 0) {
@@ -162,15 +167,16 @@ socket.on("loginUser", async (loginData) => {
       }
 
       const username = results[0].username;
-      const encryptedContent = encryptMessage(content); // Encrypt message
 
-      //Insert message into DB securely
+      // Store message in DB
       const insertSQL = "INSERT INTO messages (sender_id, tag_id, content, image_data) VALUES (?, ?, ?, ?)";
       db.query(insertSQL, [sender_id, tag_id, encryptedContent, image_data], (err, result) => {
         if (err) {
           socket.emit("messageStatus", { status: "error", message: "Message failed to send" });
         } else {
-          io.emit("newMessage", { username, tag_id, content: encryptedContent, image_data }); //Broadcast
+          // Broadcast with correct username
+          const decryptedMessage = decryptMessage(encryptedContent);
+          io.emit("newMessage", { sender_id, username, tag_id, content: decryptedMessage, image_data });
           socket.emit("messageStatus", { status: "success", message: "Message sent successfully" });
         }
       });
@@ -182,7 +188,13 @@ socket.on("loginUser", async (loginData) => {
 });
   //Retrieve recent messages from MySQL
 socket.on("getMessages", () => {
-  const sql = "SELECT message_id, sender_id, tag_id, content, image_data FROM messages ORDER BY message_id ASC LIMIT 50";
+  const sql = `
+    SELECT messages.message_id, messages.sender_id, messages.tag_id, messages.content, messages.image_data, users.username
+    FROM messages
+    JOIN users ON messages.sender_id = users.user_id
+    ORDER BY messages.message_id ASC
+    LIMIT 50
+  `;
 
   db.query(sql, (err, results) => {
     if (err) {
@@ -192,31 +204,18 @@ socket.on("getMessages", () => {
         message_id: msg.message_id,
         sender_id: msg.sender_id,
         tag_id: msg.tag_id,
-        username: null,
-        content: decryptMessage(msg.content),
-        image_data: msg.image_data, // Ensure images are included
+        username: msg.username,
+        content: sanitizeInput(decryptMessage(msg.content)),
+        image_data: msg.image_data ? msg.image_data.toString("base64") : null,
       }));
 
-      const userIds = messages.map((msg) => msg.sender_id);
-      const usernameQuery = `SELECT user_id, username FROM users WHERE user_id IN (${userIds.join(",")})`;
-
-      db.query(usernameQuery, (userErr, userResults) => {
-        if (!userErr && userResults.length > 0) {
-          userResults.forEach((user) => {
-            messages.forEach((msg) => {
-              if (msg.sender_id === user.user_id) {
-                msg.username = user.username;
-              }
-            });
-          });
-        }
-
-        socket.emit("messageHistory", { status: "success", messages });
-      });
+      socket.emit("messageHistory", { status: "success", messages });
     }
   });
 });
 
+
+//get users
 app.get("/users", (req, res) => {
   const sql = "SELECT user_id, username FROM users ORDER BY username ASC";
   
@@ -226,6 +225,8 @@ app.get("/users", (req, res) => {
     res.json({ users: results });
   });
 });
+
+/////////////
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);

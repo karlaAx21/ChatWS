@@ -68,7 +68,7 @@ const Chat = () => {  //Wrap JSX inside this function
             <p>
               <strong>{msg.username}:</strong> {msg.content}
             </p>
-            {msg.image_data && <img src={msg.image_data} alt="Uploaded" className="message-image" />}
+            {msg.image_data && <img src={`data:image/png;base64,${msg.image_data}`} alt="Uploaded" className="message-image" />}
           </div>
         ))}
       </div>
